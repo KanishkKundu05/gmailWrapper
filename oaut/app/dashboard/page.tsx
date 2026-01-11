@@ -1,4 +1,9 @@
-import { AppSidebar } from "@/components/app-sidebar"
+"use client";
+
+import { useConvexAuth } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { AppSidebar } from "@/components/app-sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -6,15 +11,36 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 export default function Page() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.push("/");
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <SidebarProvider
       style={
@@ -53,5 +79,5 @@ export default function Page() {
         </div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }

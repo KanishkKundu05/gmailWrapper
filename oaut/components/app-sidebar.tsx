@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { ArchiveX, Command, File, Inbox, Send, Trash2 } from "lucide-react"
-import { useQuery } from "convex/react"
+import { ArchiveX, Command, File, Inbox, RefreshCw, Send, Trash2 } from "lucide-react"
+import { useQuery, useAction } from "convex/react"
 import { api } from "@/convex/_generated/api"
 
 import { NavUser } from "@/components/nav-user"
@@ -21,143 +21,102 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
 
-// This is sample data
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+const navMain = [
+  {
+    title: "Inbox",
+    url: "#",
+    icon: Inbox,
+    isActive: true,
   },
-  navMain: [
-    {
-      title: "Inbox",
-      url: "#",
-      icon: Inbox,
-      isActive: true,
-    },
-    {
-      title: "Drafts",
-      url: "#",
-      icon: File,
-      isActive: false,
-    },
-    {
-      title: "Sent",
-      url: "#",
-      icon: Send,
-      isActive: false,
-    },
-    {
-      title: "Junk",
-      url: "#",
-      icon: ArchiveX,
-      isActive: false,
-    },
-    {
-      title: "Trash",
-      url: "#",
-      icon: Trash2,
-      isActive: false,
-    },
-  ],
-  mails: [
-    {
-      name: "William Smith",
-      email: "williamsmith@example.com",
-      subject: "Meeting Tomorrow",
-      date: "09:34 AM",
-      teaser:
-        "Hi team, just a reminder about our meeting tomorrow at 10 AM.\nPlease come prepared with your project updates.",
-    },
-    {
-      name: "Alice Smith",
-      email: "alicesmith@example.com",
-      subject: "Re: Project Update",
-      date: "Yesterday",
-      teaser:
-        "Thanks for the update. The progress looks great so far.\nLet's schedule a call to discuss the next steps.",
-    },
-    {
-      name: "Bob Johnson",
-      email: "bobjohnson@example.com",
-      subject: "Weekend Plans",
-      date: "2 days ago",
-      teaser:
-        "Hey everyone! I'm thinking of organizing a team outing this weekend.\nWould you be interested in a hiking trip or a beach day?",
-    },
-    {
-      name: "Emily Davis",
-      email: "emilydavis@example.com",
-      subject: "Re: Question about Budget",
-      date: "2 days ago",
-      teaser:
-        "I've reviewed the budget numbers you sent over.\nCan we set up a quick call to discuss some potential adjustments?",
-    },
-    {
-      name: "Michael Wilson",
-      email: "michaelwilson@example.com",
-      subject: "Important Announcement",
-      date: "1 week ago",
-      teaser:
-        "Please join us for an all-hands meeting this Friday at 3 PM.\nWe have some exciting news to share about the company's future.",
-    },
-    {
-      name: "Sarah Brown",
-      email: "sarahbrown@example.com",
-      subject: "Re: Feedback on Proposal",
-      date: "1 week ago",
-      teaser:
-        "Thank you for sending over the proposal. I've reviewed it and have some thoughts.\nCould we schedule a meeting to discuss my feedback in detail?",
-    },
-    {
-      name: "David Lee",
-      email: "davidlee@example.com",
-      subject: "New Project Idea",
-      date: "1 week ago",
-      teaser:
-        "I've been brainstorming and came up with an interesting project concept.\nDo you have time this week to discuss its potential impact and feasibility?",
-    },
-    {
-      name: "Olivia Wilson",
-      email: "oliviawilson@example.com",
-      subject: "Vacation Plans",
-      date: "1 week ago",
-      teaser:
-        "Just a heads up that I'll be taking a two-week vacation next month.\nI'll make sure all my projects are up to date before I leave.",
-    },
-    {
-      name: "James Martin",
-      email: "jamesmartin@example.com",
-      subject: "Re: Conference Registration",
-      date: "1 week ago",
-      teaser:
-        "I've completed the registration for the upcoming tech conference.\nLet me know if you need any additional information from my end.",
-    },
-    {
-      name: "Sophia White",
-      email: "sophiawhite@example.com",
-      subject: "Team Dinner",
-      date: "1 week ago",
-      teaser:
-        "To celebrate our recent project success, I'd like to organize a team dinner.\nAre you available next Friday evening? Please let me know your preferences.",
-    },
-  ],
+  {
+    title: "Drafts",
+    url: "#",
+    icon: File,
+    isActive: false,
+  },
+  {
+    title: "Sent",
+    url: "#",
+    icon: Send,
+    isActive: false,
+  },
+  {
+    title: "Junk",
+    url: "#",
+    icon: ArchiveX,
+    isActive: false,
+  },
+  {
+    title: "Trash",
+    url: "#",
+    icon: Trash2,
+    isActive: false,
+  },
+]
+
+const defaultUser = {
+  name: "User",
+  email: "",
+  avatar: "",
+}
+
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) {
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    } else if (diffDays === 1) {
+      return "Yesterday"
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`
+    } else {
+      return date.toLocaleDateString()
+    }
+  } catch {
+    return dateString
+  }
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  // Note: I'm using state to show active item.
-  // IRL you should use the url/router.
-  const [activeItem, setActiveItem] = React.useState(data.navMain[0])
-  const [mails, setMails] = React.useState(data.mails)
+  const [activeItem, setActiveItem] = React.useState(navMain[0])
+  const [isRefreshing, setIsRefreshing] = React.useState(false)
   const { setOpen } = useSidebar()
+
   const currentUser = useQuery(api.users.currentUser)
+  const emails = useQuery(api.gmail.getEmails)
+  const fetchEmails = useAction(api.gmail.fetchGmailEmails)
 
   const user = currentUser ? {
     name: currentUser.name ?? currentUser.email ?? "User",
     email: currentUser.email ?? "",
     avatar: currentUser.image ?? "",
-  } : data.user
+  } : defaultUser
+
+  const handleRefreshEmails = async () => {
+    setIsRefreshing(true)
+    try {
+      await fetchEmails()
+    } catch (error) {
+      console.error("Failed to fetch emails:", error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Auto-fetch emails on mount if none exist
+  React.useEffect(() => {
+    if (emails !== undefined && emails.length === 0 && currentUser) {
+      handleRefreshEmails()
+    }
+  }, [emails, currentUser])
+
+  const displayEmails = emails ?? []
 
   return (
     <Sidebar
@@ -193,7 +152,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarGroup>
             <SidebarGroupContent className="px-1.5 md:px-0">
               <SidebarMenu>
-                {data.navMain.map((item) => (
+                {navMain.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       tooltip={{
@@ -202,13 +161,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       }}
                       onClick={() => {
                         setActiveItem(item)
-                        const mail = data.mails.sort(() => Math.random() - 0.5)
-                        setMails(
-                          mail.slice(
-                            0,
-                            Math.max(5, Math.floor(Math.random() * 10) + 1)
-                          )
-                        )
                         setOpen(true)
                       }}
                       isActive={activeItem?.title === item.title}
@@ -236,32 +188,53 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <div className="text-foreground text-base font-medium">
               {activeItem?.title}
             </div>
-            <Label className="flex items-center gap-2 text-sm">
-              <span>Unreads</span>
-              <Switch className="shadow-none" />
-            </Label>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleRefreshEmails}
+                disabled={isRefreshing}
+                className="h-8 w-8"
+              >
+                <RefreshCw className={`size-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              </Button>
+              <Label className="flex items-center gap-2 text-sm">
+                <span>Unreads</span>
+                <Switch className="shadow-none" />
+              </Label>
+            </div>
           </div>
           <SidebarInput placeholder="Type to search..." />
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
-              {mails.map((mail) => (
-                <a
-                  href="#"
-                  key={mail.email}
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0"
-                >
-                  <div className="flex w-full items-center gap-2">
-                    <span>{mail.name}</span>{" "}
-                    <span className="ml-auto text-xs">{mail.date}</span>
-                  </div>
-                  <span className="font-medium">{mail.subject}</span>
-                  <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces">
-                    {mail.teaser}
-                  </span>
-                </a>
-              ))}
+              {displayEmails.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground">
+                  <Inbox className="size-12 mb-4 opacity-50" />
+                  <p className="text-sm">No emails yet</p>
+                  <p className="text-xs mt-1">Click the refresh button to fetch your emails</p>
+                </div>
+              ) : (
+                displayEmails.map((mail: typeof displayEmails[number]) => (
+                  <a
+                    href="#"
+                    key={mail._id}
+                    className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight whitespace-nowrap last:border-b-0"
+                  >
+                    <div className="flex w-full items-center gap-2">
+                      <span className={mail.isRead ? "" : "font-semibold"}>{mail.from}</span>
+                      <span className="ml-auto text-xs">{formatDate(mail.date)}</span>
+                    </div>
+                    <span className={`font-medium ${mail.isRead ? "" : "font-semibold"}`}>
+                      {mail.subject}
+                    </span>
+                    <span className="line-clamp-2 w-[260px] text-xs whitespace-break-spaces text-muted-foreground">
+                      {mail.snippet}
+                    </span>
+                  </a>
+                ))
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
