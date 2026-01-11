@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { ArchiveX, Command, File, Inbox, Send, Trash2 } from "lucide-react"
+import { useQuery } from "convex/react"
+import { api } from "@/convex/_generated/api"
 
 import { NavUser } from "@/components/nav-user"
 import { Label } from "@/components/ui/label"
@@ -149,6 +151,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [activeItem, setActiveItem] = React.useState(data.navMain[0])
   const [mails, setMails] = React.useState(data.mails)
   const { setOpen } = useSidebar()
+  const currentUser = useQuery(api.users.currentUser)
+
+  const user = currentUser ? {
+    name: currentUser.name ?? currentUser.email ?? "User",
+    email: currentUser.email ?? "",
+    avatar: currentUser.image ?? "",
+  } : data.user
 
   return (
     <Sidebar
@@ -215,7 +224,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
-          <NavUser user={data.user} />
+          <NavUser user={user} />
         </SidebarFooter>
       </Sidebar>
 
